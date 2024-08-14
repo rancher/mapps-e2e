@@ -1,5 +1,5 @@
 # This workflow is a reusable one called by other workflows
-name: (template) CLI/UI template
+name:  CLI/UI template
 
 on:
   workflow_call:

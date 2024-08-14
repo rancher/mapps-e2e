@@ -1,5 +1,5 @@
 # This workflow is a reusable one called by other workflows
-name: (template) Elemental E2E single cluster Airgap tests
+name: E2E single cluster Airgap tests
 
 on:
   workflow_call:

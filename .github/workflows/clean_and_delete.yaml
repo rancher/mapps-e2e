@@ -1,5 +1,5 @@
 # This workflow is a reusable one called by other workflows
-name: (template) Clean and delete GitHub Actions runner on GCP
+name:  Clean and delete GitHub Actions runner on GCP
 
 on:
   workflow_call:

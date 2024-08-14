@@ -1,5 +1,5 @@
 # This workflow is a reusable one called by other workflows
-name: (template) Create GitHub Actions runner on GCP
+name:  Create GitHub Actions runner on GCP
 
 on:
   workflow_call:

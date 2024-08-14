@@ -1,5 +1,5 @@
 # This workflow is a reusable one called by other workflows
-name: (template) Elemental E2E single cluster CLI tests
+name: E2E single cluster CLI tests
 
 on:
   workflow_call:
