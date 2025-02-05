@@ -1,0 +1,136 @@
+name: K3d Rancher Setup
+
+on:
+    workflow_dispatch:
+        inputs:
+            cluster-name:
+                description: Name of the k3d cluster
+                required: true
+                default: test-cluster
+            k3s-image:
+                description: K3s image version
+                required: true
+                default: rancher/k3s:v1.31.1-k3s1
+            ports:
+                description: Port mappings for the k3d cluster
+                required: true
+                default: '80:80@loadbalancer 443:443@loadbalancer 5000:5000@loadbalancer'
+            network:
+                description: Network name for k3d
+                required: true
+                default: k3d
+            cert-manager-version:
+                description: Cert-manager version
+                required: true
+                default: v1.15.3
+            domain:
+                description: Domain for Rancher
+                required: true
+                default: rancher.local
+            registry-domain:
+                description: Domain for Zot registry
+                required: true
+                default: registry.local
+            rancher-password:
+                description: Rancher bootstrap password
+                required: true
+                default: admin
+            rancher-version:
+                description: Rancher version
+                required: true
+                default: v2.10.2-alpha2
+            chart-name:
+                description: Name of the chart to test
+                required: true
+                default: example-chart
+            replicas:
+                description: Number of replicas for Rancher
+                required: true
+                type: number
+                default: 1
+jobs:
+    k3d-rancher-setup:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Set Up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: lts/*
+
+            - name: Install Helm
+              run: |
+                  curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+            - name: Set Up k3d
+              run: |
+                  curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+            - name: Create k3d Cluster
+              run: |
+                  k3d cluster create "${{ github.event.inputs.cluster-name }}" \
+                      $(for port in ${{ github.event.inputs.ports }}; do echo -n "-p $port "; done) \
+                      --servers 1 \
+                      --image "${{ github.event.inputs.k3s-image }}" \
+                      --network "${{ github.event.inputs.network }}" \
+                      --wait
+
+            - name: Add Helm Repositories
+              run: |
+                  helm repo add project-zot http://zotregistry.dev/helm-charts
+                  helm repo add jetstack https://charts.jetstack.io
+                  helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+                  helm repo update
+
+            - name: Install Zot Registry
+              run: |
+                  helm install zot project-zot/zot \
+                      --namespace zot --create-namespace \
+                      --set image.tag=latest \
+                      --set ingress.enabled=true \
+                      --set ingress.hosts[0].host=${{ github.event.inputs.registry-domain }} \
+                      --set ingress.hosts[0].paths[0].path=/ \
+                      --set ingress.className=traefik \
+                      --set service.type=ClusterIP
+
+            - name: Install Cert-Manager
+              env:
+                  CERT_MANAGER_VERSION: ${{ github.event.inputs.cert-manager-version }}
+              run: |
+                  helm install cert-manager jetstack/cert-manager \
+                    --namespace cert-manager --create-namespace \
+                    --version $CERT_MANAGER_VERSION --set crds.enabled=true
+
+            - name: Install Rancher
+              run: |
+                  helm upgrade --install rancher rancher-latest/rancher \
+                    --namespace cattle-system --create-namespace \
+                    --set hostname=${{ github.event.inputs.domain }} \
+                    --set replicas=${{ github.event.inputs.replicas }} \
+                    --set bootstrapPassword=${{ github.event.inputs.rancher-password }} \
+                    --set rancherImage=${{ github.event.inputs.rancher-image }} \
+                    --set rancherImageTag=${{ github.event.inputs.rancher-version }} \
+                    --devel --wait
+
+            # - name: Install dependencies
+            #   run: npm install -g yarn && yarn
+            # - name: Install Playwright Browsers
+            #   run: yarn playwright install --with-deps
+            # - name: Run Playwright tests
+            #   run: yarn playwright test
+
+            # - name: Clean Up k3d Cluster
+            #   if: always()
+            #   env:
+            #       CLUSTER_NAME: ${{ github.event.inputs.cluster-name }}
+            #   run: |
+            #       k3d cluster delete $CLUSTER_NAME
+
+            # - uses: actions/upload-artifact@v4
+            #   if: ${{ !cancelled() }}
+            #   with:
+            #       name: playwright-report
+            #       path: playwright-report/
+            #       retention-days: 30

@@ -1,0 +1,16 @@
+{
+	"name": "mapps-e2e",
+	"version": "1.0.0",
+	"main": "index.js",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"cypress": "^14.0.1",
+		"prettier": "^3.4.2"
+	},
+	"scripts": {},
+	"dependencies": {
+		"cypress-wait-until": "^3.0.2",
+		"uuid": "^11.0.5"
+	}
+}
